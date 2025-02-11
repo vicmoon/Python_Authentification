@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, url_for, redirect, flash, send_from_directory
+import werkzeug
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -7,6 +8,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret-key-goes-here'
+app.config['UPLOAD_FOLDER'] = 'static/files'
 
 # CREATE DATABASE
 
@@ -47,12 +49,15 @@ def register():
     name = request.form.get('name')
     email = request.form.get('email')
     password = request.form.get('password')
+    hashed_password = werkzeug.security.generate_password_hash(password, method='scrypt', salt_length=8)
+
+
 
     if not name or not email or not password:
         return "Error: All fields are required.", 404
     #create new user 
 
-    new_user = User(email=email, name=name, password=password)
+    new_user = User(email=email, name=name, password=hashed_password)
 
     db.session.add(new_user)
     db.session.commit()
@@ -60,7 +65,7 @@ def register():
     print("The new user was created")
 
  
-    return redirect(url_for('some_other_page'))
+    return render_template('secrets.html', name=request.form.get('name'))
  return render_template('register.html')
 
 
@@ -83,8 +88,9 @@ def logout():
 
 @app.route('/download')
 def download():
-    pass
-
+    return send_from_directory(
+        'static/files','cheat_sheet.pdf', as_attachment=True
+    )
 
 if __name__ == "__main__":
     app.run(debug=True)
