@@ -8,7 +8,7 @@ from flask_login import UserMixin, login_user, LoginManager, login_required, cur
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secret-key-goes-here'
-app.config['UPLOAD_FOLDER'] = 'static/files'
+
 
 # CREATE DATABASE
 
@@ -19,16 +19,26 @@ class Base(DeclarativeBase):
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 db = SQLAlchemy(model_class=Base)
+login_manager = LoginManager()
 db.init_app(app)
+login_manager.init_app(app)
+login_manager.login_view = "login"
+
 
 # CREATE TABLE IN DB
 
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(100), unique=True)
     password: Mapped[str] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(1000))
+
+
+@login_manager.user_loader
+def load_user(id):
+    with db.session() as session:
+     return session.get(User, int(id))
 
 
 with app.app_context():
@@ -52,15 +62,25 @@ def register():
     hashed_password = werkzeug.security.generate_password_hash(password, method='scrypt', salt_length=8)
 
 
-
     if not name or not email or not password:
         return "Error: All fields are required.", 404
+    #check if user exists 
+
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        flash("User already exists. Please log in.", "warning")
+        print("THe user exists already. Log in.")
+        return redirect(url_for('login'))
+
+
     #create new user 
 
     new_user = User(email=email, name=name, password=hashed_password)
 
     db.session.add(new_user)
     db.session.commit()
+
+    login_user(new_user)
 
     print("The new user was created")
 
@@ -71,22 +91,42 @@ def register():
 
 
 
-@app.route('/login')
+@app.route('/login', methods=['GET','POST'])
 def login():
+    if request.method == "POST":
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        #check if the user exists 
+
+        user = User.query.filter_by(email=email).first()
+
+        if user and check_password_hash(user.password, password):
+            login_user(user)
+            return redirect(url_for("secrets"))
+        
+        flash("Invalid email or password", "danger")
+
+
     return render_template("login.html")
 
 
 @app.route('/secrets')
+@login_required
 def secrets():
     return render_template("secrets.html")
 
 
 @app.route('/logout')
+@login_required
 def logout():
-    pass
+    logout_user()
+
+    return redirect(url_for('home'))
 
 
 @app.route('/download')
+@login_required
 def download():
     return send_from_directory(
         'static/files','cheat_sheet.pdf', as_attachment=True
