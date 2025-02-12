@@ -7,7 +7,7 @@ from sqlalchemy import Integer, String
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secret-key-goes-here'
+app.config['SECRET_KEY'] = '120483jsdkfjdritye5'
 
 
 # CREATE DATABASE
@@ -25,7 +25,7 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 
-# CREATE TABLE IN DB
+# CREATE TABLE IN DB , add UserMixin
 
 
 class User(db.Model, UserMixin):
@@ -34,7 +34,7 @@ class User(db.Model, UserMixin):
     password: Mapped[str] = mapped_column(String(100))
     name: Mapped[str] = mapped_column(String(1000))
 
-
+# create a user loader callback 
 @login_manager.user_loader
 def load_user(id):
     with db.session() as session:
@@ -97,7 +97,7 @@ def login():
         email = request.form.get('email')
         password = request.form.get('password')
 
-        #check if the user exists 
+        #check if the user exists by email address 
 
         user = User.query.filter_by(email=email).first()
 
@@ -105,7 +105,7 @@ def login():
             login_user(user)
             return redirect(url_for("secrets"))
         
-        flash("Invalid email or password", "danger")
+        flash("Invalid email or password", "warning")
 
 
     return render_template("login.html")
@@ -118,7 +118,6 @@ def secrets():
 
 
 @app.route('/logout')
-@login_required
 def logout():
     logout_user()
 
