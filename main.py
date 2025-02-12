@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, url_for, redirect, flash, send_from_directory
+from flask import Flask, render_template, request, url_for, redirect, flash, send_from_directory, session
 import werkzeug
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_sqlalchemy import SQLAlchemy
@@ -82,10 +82,13 @@ def register():
 
     login_user(new_user)
 
+    # Store name in session
+    session['name'] = name
+
     print("The new user was created")
 
  
-    return render_template('secrets.html', name=request.form.get('name'))
+    return render_template('secrets.html', name=name)
  return render_template('register.html')
 
 
