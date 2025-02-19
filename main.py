@@ -66,6 +66,7 @@ def register():
 
     if not name or not email or not password:
         return "Error: All fields are required.", 404
+        
     #check if user exists 
 
     existing_user = User.query.filter_by(email=email).first()
